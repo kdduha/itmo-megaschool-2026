@@ -13,5 +13,8 @@
 .tmp
 .coverage
 
+# llm weights
+**.gguf
+
 # uv venv
 .venv
