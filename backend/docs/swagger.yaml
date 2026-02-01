@@ -1,0 +1,117 @@
+definitions:
+  models.ExplainRequest:
+    properties:
+      file_base64:
+        example: iVBORw0KGgoAAAANSUhEUgAA...
+        type: string
+      file_format:
+        example: png
+        type: string
+      file_name:
+        example: diagram.png
+        type: string
+      generation:
+        allOf:
+        - $ref: '#/definitions/models.GenerationParams'
+        description: Optional generation parameters
+      prompt:
+        example: Explain architecture
+        type: string
+    type: object
+  models.ExplainResponse:
+    properties:
+      explanation:
+        type: string
+    type: object
+  models.GenerationParams:
+    properties:
+      max_tokens:
+        default: 512
+        example: 512
+        type: integer
+      temperature:
+        default: 0.7
+        example: 0.7
+        type: number
+    type: object
+  models.StreamChunk:
+    properties:
+      delta:
+        type: string
+      explanation:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /explain:
+    post:
+      consumes:
+      - application/json
+      description: Explain architecture from image + prompt. Image is sent as base64
+        string in JSON.
+      parameters:
+      - description: Explain request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ExplainRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ExplainResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Explain diagram image
+      tags:
+      - explain
+  /explain/stream:
+    post:
+      consumes:
+      - application/json
+      description: Stream explanation tokens from image + prompt. Image is sent as
+        base64 string in JSON.
+      parameters:
+      - description: Explain request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ExplainRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Stream of tokens (SSE)
+          schema:
+            $ref: '#/definitions/models.StreamChunk'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Stream explanation
+      tags:
+      - explain
+swagger: "2.0"
