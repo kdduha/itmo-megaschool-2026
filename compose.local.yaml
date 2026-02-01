@@ -1,0 +1,48 @@
+services:
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --save ""
+      --appendonly no
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+
+  backend:
+    build:
+      context: ./backend
+    platform: linux/amd64
+    container_name: go-backend
+    ports:
+      - "8080:8080"
+    environment:
+      CACHE_ENABLE: "true"
+      
+      SERVER_PORT: "8080"
+
+      OPENAI_API_KEY: "local-no-key"
+      OPENAI_BASE_URL: "http://host.docker.internal:8000/v1"
+      OPENAI_MODEL: "local-model"
+
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      REDIS_TTL: "10m"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: gradio-front
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8090:8090"
+    environment:
+      BACKEND_URL: "http://backend:8080"
+      GRADIO_HOST: "0.0.0.0"
+      GRADIO_PORT: "8090"
