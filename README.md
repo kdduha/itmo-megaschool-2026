@@ -23,7 +23,7 @@
 
 ---
 
-A system for automatically analyzing and explaining diagrams of multiple formats. Designed for both CPU and GPU environments. Key Features:
+A system for automatically analyzing and explaining diagrams of multiple formats. Designed for both CPU and GPU environments. Key features:
 
 - **multi-format support** – convert and understand `.drawio`, `.png`, `.jpg`, `.jpeg`, `.bpmn`, `.txt`
 
@@ -66,6 +66,44 @@ The project can be launched in different environments depending on your availabl
     docker-compose -f compose.local.yaml up --build
     ```
 
+## Usage
+
+### UI
+
+Once the system is running, open the Gradio interface in your browser: `http://localhost:8090`
+
+You can upload any supported diagram and get explanations or conversions. The UI is interactive and supports streaming results in real-time
+
+### Backend
+
+The backend exposes REST endpoints for programmatic access. You can explore the full API via Swagger at: ``http://localhost:8080/swagger/index.html#/``
+
+Use the `/explain/stream` endpoint to receive incremental updates from the LLM:
+
+```sh
+curl -N -X POST http://localhost:8080/explain/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain architecture",
+    "file_base64": "'"$(base64 -i img.png)"'",
+    "file_name": "diagram.png",
+    "file_format": "png"
+  }'
+```
+
+And as for non-streaming requests use the `/explain` endpoint to get the full response at once:
+
+```sh
+curl -X POST http://localhost:8080/explain \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain what you see",
+    "file_base64": "'"$(base64 -i img.png)"'",
+    "file_name": "diagram.png",
+    "file_format": "png"
+  }'
+```
+
 ## Performance
 
 The system's performance was measured in three different environments using [a benchmark script](./benchmark/README.md). The service's uptime conditions are the same everywhere:
@@ -106,3 +144,5 @@ The results are follows:
 | txt | 3 | 1m30.374s | 4m31.122s | 1.14 KB |
 | png | 3 | 3m12.705s | 9m38.115s | 98.83 KB |
 | **ALL** | 15 | 2m52.459s | 43m07.464s | 78.83 KB |
+
+Performance varies significantly depending on the hardware: GPU (RTX 3070) achieves the lowest average times for individual requests, while high-end CPU servers provide moderate throughput for larger batch processing. Apple M1 Pro delivers competitive performance for lightweight workloads, making it a viable option for local testing and small-scale deployments
