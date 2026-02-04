@@ -12,7 +12,7 @@ services:
       LLAMA_ARG_MMPROJ: /models/mmproj-model-f16.gguf
       LLAMA_ARG_CTX_SIZE: 4096
       LLAMA_ARG_KV_UNIFIED: 1
-      LLAMA_ARG_N_PARALLEL: 8
+      LLAMA_ARG_ENDPOINT_METRICS: enabled
       LLAMA_ARG_HOST: 0.0.0.0
       LLAMA_ARG_PORT: 8000
 
@@ -64,3 +64,26 @@ services:
       BACKEND_URL: "http://backend:8080"
       GRADIO_HOST: "0.0.0.0"
       GRADIO_PORT: "8090"
+ 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana_data: {}

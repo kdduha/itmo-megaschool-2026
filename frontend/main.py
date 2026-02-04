@@ -53,15 +53,10 @@ def explain_image_stream(prompt: gr.Text, file: gr.File, temperature: float=0.7,
 
         for event in client.events():
 
-            if event.event == "message":
+            if event.event == "message" or event.event == "done":
                 chunk = json.loads(event.data)
                 accumulated_text += chunk.get("delta", "")
                 yield accumulated_text, "Generating..."
-
-            elif event.event == "done":
-                chunk = json.loads(event.data)
-                accumulated_text += chunk.get("explanation", "")
-                yield accumulated_text, "Finalizing..."
 
             elif event.event == "error":
                 yield f"❌ Backend error: {event.data}", "Error"

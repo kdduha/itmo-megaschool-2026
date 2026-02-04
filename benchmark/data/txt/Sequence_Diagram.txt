@@ -1,0 +1,39 @@
+title Создание страницы
+
+participant User
+
+User->WebFrontend: Нажимает "Создать страницу"
+
+opt Валидация формы
+  WebFrontend->WebFrontend: Проверка заполненных полей
+end
+
+WebFrontend->BackendAPI: POST /page (данные страницы)
+
+opt Проверка авторизации
+  BackendAPI->AuthProvider: Проверка токена
+  AuthProvider-->BackendAPI: Токен валиден
+end
+
+BackendAPI->PageService: createPage(data)
+
+loop Попытка записи\n(пока не успешна)
+  PageService->PageRepository: insert(page)
+  PageRepository-->PageService: OK
+end
+
+PageService-->BackendAPI: Созданная страница
+
+BackendAPI-->WebFrontend: JSON с новой страницей
+
+opt Отрисовка UI
+  WebFrontend->User: Отображает страницу
+end
+
+BackendAPI->Realtime: notify("page created")
+Realtime-->BackendAPI: Подтверждение уведомления
+
+note right of Realtime
+  Рассылает события всем подписчикам
+end note
+

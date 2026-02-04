@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/bytedance/sonic"
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/models"
@@ -12,7 +11,7 @@ import (
 
 type explainService interface {
 	Send(ctx context.Context, req *models.ExplainRequest) (*models.ExplainResponse, error)
-	SendStream(ctx context.Context, req *models.ExplainRequest, onToken func(token string) error) error
+	SendStream(ctx context.Context, req *models.ExplainRequest) (<-chan models.StreamChunk, error)
 }
 
 type ExplainHandler struct {
@@ -89,36 +88,35 @@ func (h *ExplainHandler) ExplainStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	flusher := w.(http.Flusher)
+	flusher := http.NewResponseController(w)
 
-	var full strings.Builder
-	err := h.service.SendStream(r.Context(), &req, func(token string) error {
-		full.WriteString(token)
+	stream, err := h.service.SendStream(r.Context(), &req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-		chunk := models.StreamChunk{Delta: token}
+	for chunk := range stream {
+		if chunk.Err != nil {
+			fmt.Fprintf(w, "event: error\ndata: %v\n\n", chunk.Err)
+			flusher.Flush()
+			return
+		}
+
 		data, err := sonic.Marshal(chunk)
 		if err != nil {
-			return err
+			fmt.Fprintf(w, "event: error\ndata: marshal error %v\n\n", err)
+			flusher.Flush()
+			return
 		}
 
 		fmt.Fprintf(w, "event: message\ndata: %s\n\n", data)
 		flusher.Flush()
-		return nil
-	})
-	if err != nil {
-		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
-		flusher.Flush()
-		return
-	}
 
-	final := models.StreamChunk{Explanation: full.String()}
-	data, err := sonic.Marshal(final)
-	if err != nil {
-		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
-		flusher.Flush()
-		return
+		if chunk.Done {
+			fmt.Fprintf(w, "event: done\ndata: {}\n\n")
+			flusher.Flush()
+			return
+		}
 	}
-
-	fmt.Fprintf(w, "event: done\ndata: %s\n\n", data)
-	flusher.Flush()
 }

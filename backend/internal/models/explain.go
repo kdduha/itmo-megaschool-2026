@@ -37,6 +37,7 @@ type ExplainResponse struct {
 }
 
 type StreamChunk struct {
-	Delta       string `json:"delta,omitempty"`
-	Explanation string `json:"explanation,omitempty"`
+	Delta string `json:"delta,omitempty"`
+	Err   error  `json:"-"`
+	Done  bool   `json:"-"`
 }

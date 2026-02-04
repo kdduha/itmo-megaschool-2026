@@ -13,9 +13,11 @@ import (
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/cache"
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/config"
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/handler"
+	"github.com/kdduha/itmo-megaschool-2026/backend/internal/metrics"
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/service"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	_ "github.com/kdduha/itmo-megaschool-2026/backend/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -52,17 +54,20 @@ func main() {
 	e := handler.NewExplainHandler(explainService)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Throttle(cfg.Server.ThrottleLimit))
-	r.Use(middleware.Timeout(cfg.Server.Timeout))
+	r.Use([]func(http.Handler) http.Handler{
+		middleware.Logger,
+		middleware.Recoverer,
+		middleware.Throttle(cfg.Server.ThrottleLimit),
+		middleware.Timeout(cfg.Server.Timeout),
+		metrics.Middleware,
+	}...)
 
 	r.Post("/explain", e.Explain)
 	r.Post("/explain/stream", e.ExplainStream)
-
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
 	))
+	r.Handle("/metrics", promhttp.Handler())
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
