@@ -74,52 +74,87 @@ func (e *ExplainService) Send(ctx context.Context, req *models.ExplainRequest) (
 func (e *ExplainService) SendStream(
 	ctx context.Context,
 	req *models.ExplainRequest,
-	onToken func(token string) error,
-) error {
+) (<-chan models.StreamChunk, error) {
+	ch := make(chan models.StreamChunk, 1)
+
 	if e.cache != nil {
 		cached, found, err := e.cache.Get(ctx, getCacheKey(req))
 		if err != nil {
 			e.logger.Printf("cache get error: %v\n", err)
 		}
 		if found {
-			e.logger.Println("served from cache")
-			return onToken(cached)
+			ch <- models.StreamChunk{Delta: cached, Done: true}
+			close(ch)
+			return ch, nil
 		}
 	}
 
 	params, err := e.buildOpenAIReq(req)
 	if err != nil {
-		return fmt.Errorf("failed to build request: %w", err)
+		return nil, fmt.Errorf("build request error: %w", err)
 	}
 
-	stream := e.openaiClient.Chat.Completions.NewStreaming(ctx, *params)
-	defer stream.Close()
+	go func() {
+		defer close(ch)
 
-	var builder strings.Builder
-	for stream.Next() {
-		chunk := stream.Current()
-
-		if len(chunk.Choices) == 0 {
-			continue
+		sendOrStop := func(msg models.StreamChunk) bool {
+			select {
+			case ch <- msg:
+				return true
+			case <-ctx.Done():
+				return false
+			}
 		}
 
-		delta := chunk.Choices[0].Delta.Content
-		if delta == "" {
-			continue
+		sendNonBlocking := func(msg models.StreamChunk) {
+			select {
+			case ch <- msg:
+			default:
+			}
 		}
 
-		builder.WriteString(delta)
-		if err := onToken(delta); err != nil {
-			return err
-		}
-	}
+		stream := e.openaiClient.Chat.Completions.NewStreaming(ctx, *params)
+		defer stream.Close()
 
-	if e.cache != nil {
-		if err := e.cache.Set(ctx, getCacheKey(req), builder.String()); err != nil {
-			e.logger.Printf("failed to set cache: %v\n", err)
+		var builder strings.Builder
+
+		for stream.Next() {
+			if ctx.Err() != nil {
+				sendNonBlocking(models.StreamChunk{Err: ctx.Err()})
+				return
+			}
+
+			chunk := stream.Current()
+			if len(chunk.Choices) == 0 {
+				continue
+			}
+
+			delta := chunk.Choices[0].Delta.Content
+			if delta == "" {
+				continue
+			}
+
+			builder.WriteString(delta)
+			if !sendOrStop(models.StreamChunk{Delta: delta}) {
+				return
+			}
 		}
-	}
-	return stream.Err()
+
+		if err := stream.Err(); err != nil {
+			sendNonBlocking(models.StreamChunk{Err: err})
+			return
+		}
+
+		if e.cache != nil {
+			if err := e.cache.Set(ctx, getCacheKey(req), builder.String()); err != nil {
+				e.logger.Printf("failed to set cache: %v", err)
+			}
+		}
+
+		sendNonBlocking(models.StreamChunk{Done: true})
+	}()
+
+	return ch, nil
 }
 
 func getCacheKey(req *models.ExplainRequest) string {

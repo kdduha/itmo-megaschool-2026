@@ -1,0 +1,71 @@
+@startuml
+
+class User {
+  id: UUID
+  name: string
+  email: string
+  role: string
+  +createdAt(): datetime
+  +canEdit(page): boolean
+}
+
+class Workspace {
+  id: UUID
+  name: string
+  +createdAt(): datetime
+  +addMember(user)
+  +removeMember(user)
+}
+
+class Page {
+  id: UUID
+  title: string
+  content: JSON
+  +createdAt(): datetime
+  +updatedAt(): datetime
+  +updateContent(json)
+  +addComment(comment)
+}
+
+class Comment {
+  id: UUID
+  text: string
+  +createdAt(): datetime
+}
+
+
+class Permission {
+  id: UUID
+  userId: UUID
+  pageId: UUID
+  +level(): enum(read, comment, edit)
+}
+
+class FileAttachment {
+  id: UUID
+  fileUrl: string
+  pageId: UUID
+  +upload()
+}
+
+Workspace -left-{ User
+
+' Workspace 1..* — *..1 Page
+Workspace -{ Page
+
+' Page 1..* — 0..* Comment
+Page -{ Comment
+
+' Page 1..* — 0..* FileAttachment
+Page -{ FileAttachment
+
+' User 1..* — 0..* Comment
+User -up-{ Comment
+
+' User 1..* — 0..* Permission
+User -down-{ Permission
+
+' Page 1..* — 0..* Permission
+Page -down-{ Permission
+
+@enduml

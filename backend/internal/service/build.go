@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/kdduha/itmo-megaschool-2026/backend/internal/metrics"
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/models"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
@@ -21,27 +23,43 @@ func getUserPrompt(req *models.ExplainRequest) string {
 }
 
 func (e *ExplainService) buildOpenAIReq(req *models.ExplainRequest) (*openai.ChatCompletionNewParams, error) {
-	e.logger.Printf("start preprocessing file: %s\n", req.FileName)
-	defer e.logger.Printf("finish preprocessing file: %s\n", req.FileName)
-
 	var (
+		duration         time.Duration
+		preprocessStatus string
+
 		messages []openai.ChatCompletionMessageParamUnion
 		err      error
 	)
+
+	e.logger.Printf("start preprocessing file: %s\n", req.FileName)
+	defer func() {
+		e.logger.Printf("finish preprocessing file: %s\n", req.FileName)
+		metrics.FilePreprocessTotal(preprocessStatus, req.FileFormat)
+		metrics.FilePreprocessDuration(preprocessStatus, req.FileName, duration)
+	}()
+
+	start := time.Now()
+
 	switch req.FileFormat {
 	case PNG, JPEG, JPG:
 		messages = e.buildImageMessages(req)
 	case DRAWIO, BPMN:
 		messages, err = e.buildDiagramMessages(req)
 		if err != nil {
+			preprocessStatus = "failed"
+			duration = time.Duration(start.Second())
 			return nil, fmt.Errorf("failed to convert drawio: %v", err)
 		}
 	case TXT:
 		messages, err = e.buildTxtMessages(req)
 		if err != nil {
+			preprocessStatus = "failed"
+			duration = time.Duration(start.Second())
 			return nil, fmt.Errorf("failed to convert txt: %v", err)
 		}
 	default:
+		preprocessStatus = "failed"
+		duration = time.Duration(start.Second())
 		return nil, fmt.Errorf("unsupported fileformat {%s}", req.FileFormat)
 	}
 
@@ -57,6 +75,9 @@ func (e *ExplainService) buildOpenAIReq(req *models.ExplainRequest) (*openai.Cha
 	if req.Generation != nil && req.Generation.MaxTokens != nil {
 		params.Temperature = openai.Float(*req.Generation.Temperature)
 	}
+
+	preprocessStatus = "success"
+	duration = time.Duration(start.Second())
 	return params, nil
 }
 

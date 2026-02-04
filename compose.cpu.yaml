@@ -17,6 +17,7 @@ services:
       LLAMA_ARG_MLOCK: 0 
       LLAMA_ARG_N_THREADS: 8 
       LLAMA_ARG_NO_WARMUP: 1
+      LLAMA_ARG_ENDPOINT_METRICS: enabled
       LLAMA_ARG_HOST: 0.0.0.0
       LLAMA_ARG_PORT: 8000
 
@@ -71,3 +72,26 @@ services:
       GRADIO_HOST: "0.0.0.0"
       GRADIO_PORT: "8090"
       GRADIO_MAX_FILE_SIZE: "1mb"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana_data: {}

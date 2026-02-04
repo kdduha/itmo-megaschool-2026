@@ -1,0 +1,22 @@
+@startuml
+title C1: Контекст системы онлайн-заказов Додо Пицца
+
+actor "Клиент" as Client
+actor "Сотрудник кухни" as KitchenStaff
+actor "Курьер" as Courier
+
+rectangle "System:\nПлатформа онлайн-заказов\nДодо Пицца" as Platform
+rectangle "System:\nПлатёжный провайдер" as PaymentProvider
+rectangle "System:\nСервис уведомлений" as NotificationService
+rectangle "System:\nКартографический сервис\nгеокодирования" as GeoService
+rectangle "System:\nОперационная программа\nресторана" as RestaurantSystem
+
+Client --> Platform : Просмотр меню,\nкорзина,\nоформление,\nоплата,\nотслеживание
+Platform --> PaymentProvider : Инициация/\nрезультат оплаты
+Platform --> NotificationService : Отправка\nуведомлений
+Platform --> GeoService : Геокодирование\nадреса,\nпроверка зоны
+Platform --> RestaurantSystem : Подтверждённые\nзаказы,\nстатусы
+KitchenStaff --> RestaurantSystem : Отмечает\nготовность
+Courier --> RestaurantSystem : Получает задания,\nобновляет статусы
+
+@enduml
