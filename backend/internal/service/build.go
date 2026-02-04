@@ -48,7 +48,7 @@ func (e *ExplainService) buildOpenAIReq(req *models.ExplainRequest) (*openai.Cha
 		if err != nil {
 			preprocessStatus = "failed"
 			duration = time.Duration(start.Second())
-			return nil, fmt.Errorf("failed to convert drawio: %v", err)
+			return nil, fmt.Errorf("failed to convert diagram: %v", err)
 		}
 	case TXT:
 		messages, err = e.buildTxtMessages(req)
