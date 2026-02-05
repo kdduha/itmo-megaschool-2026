@@ -25,7 +25,7 @@
 
 A system for automatically analyzing and explaining diagrams of multiple formats. Designed for both CPU and GPU environments. Key features:
 
-- **multi-format support** – convert and understand `.drawio`, `.png`, `.jpg`, `.jpeg`, `.bpmn`, `.txt`
+- **multi-format support** – convert and understand `.drawio`, `.png`, `.jpg`, `.jpeg`, `.svg`, `.bpmn`, `.txt`, `.pdf`
 
 - **light-weighted VLM model** quantized [`openbmb/MiniCPM-V-4_5-gguf`](https://huggingface.co/openbmb/MiniCPM-V-4_5-gguf) (can be replcaced) with `llama.cpp` backend
 

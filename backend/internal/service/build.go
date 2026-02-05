@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -12,7 +13,12 @@ import (
 	"github.com/kdduha/itmo-megaschool-2026/backend/internal/models"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
+	"image/jpeg"
+
+	fitz "github.com/gen2brain/go-fitz"
 )
+
+const dpi = 120
 
 func getUserPrompt(req *models.ExplainRequest) string {
 	userPrompt := fmt.Sprintf(userPromptTemplate, req.FileName)
@@ -43,7 +49,7 @@ func (e *ExplainService) buildOpenAIReq(req *models.ExplainRequest) (*openai.Cha
 	switch req.FileFormat {
 	case PNG, JPEG, JPG:
 		messages = e.buildImageMessages(req)
-	case DRAWIO, BPMN:
+	case DRAWIO, BPMN, SVG:
 		messages, err = e.buildDiagramMessages(req)
 		if err != nil {
 			preprocessStatus = "failed"
@@ -56,6 +62,13 @@ func (e *ExplainService) buildOpenAIReq(req *models.ExplainRequest) (*openai.Cha
 			preprocessStatus = "failed"
 			duration = time.Duration(start.Second())
 			return nil, fmt.Errorf("failed to convert txt: %v", err)
+		}
+	case PDF:
+		messages, err = e.buildPdfMessages(req)
+		if err != nil {
+			preprocessStatus = "failed"
+			duration = time.Duration(start.Second())
+			return nil, fmt.Errorf("failed to convert pdf: %v", err)
 		}
 	default:
 		preprocessStatus = "failed"
@@ -131,6 +144,51 @@ func (e *ExplainService) buildTxtMessages(req *models.ExplainRequest) ([]openai.
 	}, nil
 }
 
+func (e *ExplainService) buildPdfMessages(req *models.ExplainRequest) ([]openai.ChatCompletionMessageParamUnion, error) {
+	userPrompt := getUserPrompt(req)
+	inputData, err := base64.StdEncoding.DecodeString(req.FileBase64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64: %w", err)
+	}
+
+	doc, err := fitz.NewFromMemory(inputData)
+	if err != nil {
+		return nil, fmt.Errorf("mupdf open failed: %w", err)
+	}
+	defer doc.Close()
+
+	parts := []openai.ChatCompletionContentPartUnionParam{
+		openai.TextContentPart(userPrompt),
+	}
+
+	for n := 0; n < doc.NumPage(); n++ {
+		img, err := doc.ImageDPI(n, dpi)
+		if err != nil {
+			return nil, fmt.Errorf("render page %d failed: %w", n, err)
+		}
+
+		var buf bytes.Buffer
+		err = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85})
+		if err != nil {
+			return nil, fmt.Errorf("jpeg encode page %d failed: %w", n, err)
+		}
+
+		encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+		imageData := "data:image/jpeg;base64," + encoded
+
+		parts = append(parts,
+			openai.ImageContentPart(openai.ChatCompletionContentPartImageImageURLParam{
+				URL: imageData,
+			}),
+		)
+	}
+
+	return []openai.ChatCompletionMessageParamUnion{
+		openai.SystemMessage(systemPromptImage),
+		openai.UserMessage(parts),
+	}, nil
+}
+
 func convertDiagramToImageTemp(inputBase64, fileExt string) (string, error) {
 	var (
 		cmdArgs []string
@@ -168,6 +226,8 @@ func convertDiagramToImageTemp(inputBase64, fileExt string) (string, error) {
 		cmdArgs = []string{"bpmn-to-image", fmt.Sprintf("%s:%s", tmpIn.Name(), tmpOut.Name()), "--scale", "0.7"}
 	case DRAWIO:
 		cmdArgs = []string{"drawio", "-x", "-f", outExt, "-o", tmpOut.Name(), tmpIn.Name()}
+	case SVG:
+		cmdArgs = []string{"inkscape", tmpIn.Name(), "--export-type=png", "--export-filename=" + tmpOut.Name()}
 	default:
 		return "", fmt.Errorf("unsupported file extension: %s", fileExt)
 	}

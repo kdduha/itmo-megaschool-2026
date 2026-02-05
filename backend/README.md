@@ -1,7 +1,7 @@
 # Backend
 
 Here you can find a backend proxy service, that:
-- converts diagram files (`bpmn`, `drawio`) to images
+- converts diagram files (`bpmn`, `drawio`,`pdf`, `svg`) to images
 - streams diagrams for an explanation to OpenAI-like backends
 - caches OpenAI backend responses with Redis
 
@@ -13,6 +13,7 @@ You can check the basic backend configuration and available params [here](./inte
 
 1. Install bpmn diagram converter [`bpmn-to-image`](https://github.com/bpmn-io/bpmn-to-image)
 1. Install [`drawio`](https://github.com/jgraph/drawio) desktop app
+1. Install [`inkscape`](https://gitlab.com/inkscape/inkscape)
 1. Start the server:
    ```sh
    go run cmd/main.go

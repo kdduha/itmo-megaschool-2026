@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/bytedance/sonic v1.15.0
 	github.com/caarlos0/env/v11 v11.3.1
+	github.com/gen2brain/go-fitz v1.24.15
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/openai/openai-go/v3 v3.17.0
 	github.com/prometheus/client_golang v1.23.2
@@ -21,11 +22,13 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.6 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/jupiterrider/ffi v0.5.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

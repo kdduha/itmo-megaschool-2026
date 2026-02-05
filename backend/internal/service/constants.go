@@ -4,9 +4,11 @@ const (
 	PNG    = "png"
 	JPEG   = "jpeg"
 	JPG    = "jpg"
+	SVG    = "svg"
 	DRAWIO = "drawio"
 	BPMN   = "bpmn"
 	TXT    = "txt"
+	PDF    = "pdf"
 )
 
 const (
