@@ -21,7 +21,11 @@
     </a>
 </div>
 
----
+-----
+
+**The winner of ITMO Megaschool 2026**: top 1
+
+-----
 
 A system for automatically analyzing and explaining diagrams of multiple formats. Designed for both CPU and GPU environments. Key features:
 
